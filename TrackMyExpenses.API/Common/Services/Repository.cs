@@ -1,0 +1,61 @@
+using Microsoft.EntityFrameworkCore;
+using TrackMyExpenses.API.Common.Interfaces;
+using TrackMyExpenses.API.Domain.Common;
+using TrackMyExpenses.API.Infrastructure.Persistence;
+
+namespace TrackMyExpenses.API.Common.Services
+{
+    public class Repository<TEntity> : IRepository<TEntity> where TEntity : BaseEntity
+    {
+        protected readonly AppDbContext _context;
+        protected readonly DbSet<TEntity> _dbSet;
+
+        public Repository(AppDbContext context)
+        {
+            _context = context;
+            _dbSet = context.Set<TEntity>();
+        }
+
+        public async Task<IEnumerable<TEntity>> GetAllAsync()
+        {
+            return await _dbSet
+                .Where(e => !e.IsDeleted)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<TEntity>> GetAllIncludingDeletedAsync()
+        {
+            return await _dbSet.ToListAsync();
+        }
+
+        public async Task<TEntity?> GetByIdAsync(Guid id)
+        {
+            return await _dbSet.FirstOrDefaultAsync(e => e.Id == id);
+        }
+
+        public async Task AddAsync(TEntity entity)
+        {
+            await _dbSet.AddAsync(entity);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateAsync(TEntity entity)
+        {
+            _dbSet.Update(entity);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task SoftDeleteAsync(TEntity entity)
+        {
+            entity.IsDeleted = true;
+            _dbSet.Update(entity);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task HardDeleteAsync(TEntity entity)
+        {
+            _dbSet.Remove(entity);
+            await _context.SaveChangesAsync();
+        }
+    }
+}
